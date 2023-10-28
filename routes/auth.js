@@ -2,14 +2,26 @@ const express = require('express')
 const router = express.Router()
 
 const User = require('../models/User')
-const {registerValidation} = require('../validations/validation')
+const {registerValidation, loginValidation} = require('../validations/validation')
+
+const bcryptjs = require('bcryptjs')
 
 router.post('/register', async(req,res)=>{
 
-  // Validation to check user input
+  // Validation 1 to check user input
   const {error} = registerValidation(req.body)
-  
-  if (error) res.status(400).send({message: error['details'][0]['message']})
+  if(error) {
+    return res.status(400).send({message: error['details'][0]['message']})
+  }
+
+  // Validation 2 to check if user exists.
+  const userExists = await User.findOne({email: req.body.email})
+  if(userExists) {
+    return res.status(400).send({message: 'User already exists'})
+  }
+
+  const salt = await bcryptjs.genSalt(5)
+  const hashedPassword = await bcryptjs.hash(req.body.password)
 
   // Code to insert data
   const user = new User({
