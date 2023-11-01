@@ -5,11 +5,12 @@ const User = require('../models/User')
 const {registerValidation, loginValidation} = require('../validations/validation')
 
 const bcryptjs = require('bcryptjs')
+const jsonwebtoken = require('jsonwebtoken')
 
 router.post('/register', async(req,res)=>{
 
   // Validation 1 to check user input
-  const {error} = registerValidation(req.body)
+  const {error} = registerValidation(req.body) // const error = registerValidation(req.body).error
   if(error) {
     return res.status(400).send({message: error['details'][0]['message']})
   }
@@ -20,14 +21,15 @@ router.post('/register', async(req,res)=>{
     return res.status(400).send({message: 'User already exists'})
   }
 
+  // Create hash representation of password.
   const salt = await bcryptjs.genSalt(5)
-  const hashedPassword = await bcryptjs.hash(req.body.password)
+  const hashedPassword = await bcryptjs.hash(req.body.password, salt)
 
   // Code to insert data
   const user = new User({
     username: req.body.username,
     email: req.body.email,
-    password: req.body.password
+    password: hashedPassword
   })
 
   try{
@@ -40,7 +42,29 @@ router.post('/register', async(req,res)=>{
 })
 
 router.post('/login', async(req,res)=>{
+  
+  // Validation 1 to check user input
+  const {error} = loginValidation(req.body) // const error = registerValidation(req.body).error
+  if(error) {
+    return res.status(400).send({message: error['details'][0]['message']})
+  }
 
+  // Validation 2 to check if user exists.
+  const user = await User.findOne({email: req.body.email})
+  if(!user) {
+    return res.status(400).send({message: 'Incorrect username or password'})
+  }
+
+  // Validation 3 check password
+  const passwordValidation = await bcryptjs.compare(req.body.password, user.password)
+  if(!passwordValidation) {
+    return res.status(400).send({message: 'Incorrect password or username'})
+  }
+
+  // Generate auth-token
+  const token = jsonwebtoken.sign({_id:user._id}, process.env.TOKEN_SECRET)
+  res.header('auth-token', token).send({'auth-token':token})
+  
 })
 
 module.exports = router

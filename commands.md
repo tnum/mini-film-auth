@@ -5,3 +5,6 @@ npm install joi
 
 * Install bcryptjs to encrypt/decrypt passwords
 npm install bcryptjs
+
+* Install JWT token
+npm install jsonwebtoken
